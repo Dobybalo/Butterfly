@@ -211,6 +211,34 @@ class TriangleFan {
 	float phi;			// rotation
 	float sx, sy;		// scaling
 	float wTx, wTy;		// translation
+	std::vector<float> vertexCoords;
+	
+protected:
+	void setVertexCoords() {
+		
+		const int num_cps = 100;
+		//const int array_size = (num_cps + 2) * 2;
+
+		//std::vector<float> vertexCoords;
+		vertexCoords.push_back(0);	// cX
+		vertexCoords.push_back(0);  // cY
+
+		for (int i = 0; i < num_cps; i++)
+		{
+			float rad = (float)i / (float)num_cps * 2.0f * M_PI;
+			float x = cosf(rad) * 3;
+			float y = sinf(rad) * 3;
+
+			vertexCoords.push_back(x);
+			vertexCoords.push_back(y);
+		}
+
+		//körvonal elsõ pontja kell még egyszer...
+		vertexCoords.push_back(vertexCoords.at(2));
+		vertexCoords.push_back(vertexCoords.at(3));
+
+		//return vertexCoords;
+	}
 	
 public:
 	TriangleFan() {
@@ -218,62 +246,10 @@ public:
 	}
 
 	void Create() {
-		/*
-		//itt felvesszük a vertexCoords-ot
-		//  ha 20 részre osztom fel a kört, 22 pont lesz (körvonal elsõ pontja 2x kell), mindegyikhez tartozik 2 koord. -> 44
-		const int num_cps = 100;
-		const int size = (num_cps + 2) * 2;
-		float vertexCoords[size];
-		vertexCoords[0] = 0;	//cx
-		vertexCoords[1] = 0;	//cy
 		
-		for (int i = 0; i < num_cps; i++)
-		{
-			//angle = i * 360 / num_cps;
-			//float rad = angle * PI / 180;
-			float rad = (float)i / (float)num_cps * 2.0f * M_PI;
-			float x = cosf(rad) * 3;
-			float y = sinf(rad) * 3;
-			
-			vertexCoords[(i + 1) * 2] = x;
-			vertexCoords[(i + 1) * 2 + 1] = y;
-		}
-
-		//utsó elõtti két koordináta(is) a körvonal elsõ pontja
-		vertexCoords[size - 2] = vertexCoords[2];
-		vertexCoords[size - 1] = vertexCoords[3];
+		setVertexCoords();
+			//std::vector<float> vertexCoords = getVertexCoords();
 		
-		*/
-
-		// ugyanez Vectorral:
-		const int num_cps = 100;
-		const int array_size = (num_cps + 2) * 2;
-		std::vector<float> v;
-		v.push_back(0);	// cX
-		v.push_back(0);  // cY
-
-		for (int i = 0; i < num_cps; i++)
-		{
-			float rad = (float)i / (float)num_cps * 2.0f * M_PI;
-			float x = cosf(rad) * 3;
-			float y = sinf(rad) * 3;
-
-			v.push_back(x);
-			v.push_back(y);
-		}
-
-		//körvonal elsõ pontja kell még egyszer...
-		v.push_back(v.at(2));
-		v.push_back(v.at(3));
-
-		//alakítsuk át tömbbé:
-		float vertexCoords[array_size];
-
-		for (int i = 0; i < array_size; i++) {
-			vertexCoords[i] = v.at(i);
-		}
-
-		// ---------------
 
 		glGenVertexArrays(1, &vao);	// create 1 vertex array object
 		glBindVertexArray(vao);		// make it active
@@ -286,8 +262,8 @@ public:
 		//float vertexCoords[] = { 0,0,  -1,1,  1,1,  1,-1,  -1,-1,  -1,1 };
 		//float vertexCoords[] = { -2, -2,   -1, 2,   2, -1,  5, -5,  6, 2 };	// vertex data on the CPU
 		glBufferData(GL_ARRAY_BUFFER,      // copy to the GPU
-			sizeof(vertexCoords), // number of the vbo in bytes
-			vertexCoords,		   // address of the data array on the CPU
+			vertexCoords.size() * sizeof(float), //sizeof(vertexCoords), // number of the vbo in bytes
+			&vertexCoords[0], //vertexCoords,		   // address of the data array on the CPU
 			GL_STATIC_DRAW);	   // copy to that part of the memory which is not modified 
 								   // Map Attribute Array 0 to the current bound vertex buffer (vbo[0])
 		glEnableVertexAttribArray(0);
@@ -333,8 +309,8 @@ public:
 		mat4 MRotate(
 			 cos(phi), sin(phi), 0, 0,
 			-sin(phi), cos(phi), 0, 0, 
-			0, 0, 1, 0,
-			0, 0, 0, 1);
+			 0, 0, 1, 0,
+			 0, 0, 0, 1);
 		
 		mat4 Mtranslate(
 			1, 0, 0, 0,
@@ -349,7 +325,7 @@ public:
 		else printf("uniform MVP cannot be set\n");
 
 		glBindVertexArray(vao);	// make the vao and its vbos active playing the role of the data source
-		glDrawArrays(GL_TRIANGLE_FAN, 0, 104);	// draw a single triangle with vertices defined in vao
+		glDrawArrays(GL_TRIANGLE_FAN, 0, vertexCoords.size() / 2);	// draw a single triangle with vertices defined in vao
 	}
 };
 
