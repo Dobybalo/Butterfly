@@ -207,14 +207,15 @@ Camera camera;
 unsigned int shaderProgram;
 
 class TriangleFan {
+
+protected:
 	unsigned int vao;	// vertex array object id
 	float phi;			// rotation
 	float sx, sy;		// scaling
 	float wTx, wTy;		// translation
 	std::vector<float> vertexCoords;
-	
-protected:
-	void setVertexCoords() {
+
+	virtual void setVertexCoords() {
 		
 		const int num_cps = 100;
 		//const int array_size = (num_cps + 2) * 2;
@@ -226,8 +227,8 @@ protected:
 		for (int i = 0; i < num_cps; i++)
 		{
 			float rad = (float)i / (float)num_cps * 2.0f * M_PI;
-			float x = cosf(rad) * 3;
-			float y = sinf(rad) * 3;
+			float x = cosf(rad); // *3;
+			float y = sinf(rad); // *3;
 
 			vertexCoords.push_back(x);
 			vertexCoords.push_back(y);
@@ -329,6 +330,46 @@ public:
 	}
 };
 
+class FlowerCenter : public TriangleFan{
+	// ami paraméterezhetõ kell legyen, az az eltolás és a sugárméret
+private:
+	float radius;
+
+protected:
+	void setVertexCoords() {
+		const int num_cps = 100;
+		//const int array_size = (num_cps + 2) * 2;
+
+		//std::vector<float> vertexCoords;
+		vertexCoords.push_back(0);	// cX
+		vertexCoords.push_back(0);  // cY
+
+		for (int i = 0; i < num_cps; i++)
+		{
+			float rad = (float)i / (float)num_cps * 2.0f * M_PI;
+			float x = cosf(rad) * radius;
+			float y = sinf(rad) * radius;
+
+			vertexCoords.push_back(x);
+			vertexCoords.push_back(y);
+		}
+
+		//körvonal elsõ pontja kell még egyszer...
+		vertexCoords.push_back(vertexCoords.at(2));
+		vertexCoords.push_back(vertexCoords.at(3));
+
+	}
+
+public:
+	FlowerCenter(float x, float y, float r) {
+		wTx = x;
+		wTy = y;
+		radius = r;
+	}
+
+
+};
+
 class Butterfly {
 	//consists of body, head and wings
 	// body: ellipse - scaling a circle - triangle_fan
@@ -347,6 +388,8 @@ class Flower {
 
 // The virtual world
 TriangleFan triangle;
+FlowerCenter fc(0, 0, 0.5);
+FlowerCenter fc2(4, 5, 0.5);
 
 // Initialization, create an OpenGL context
 void onInitialization() {
@@ -354,6 +397,8 @@ void onInitialization() {
 
 	// Create objects by setting up their vertex data on the GPU
 	triangle.Create();
+	fc.Create();
+	fc2.Create();
 
 	// Create vertex shader from string
 	unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -394,7 +439,9 @@ void onExit() {
 void onDisplay() {
 	glClearColor(0, 1, 0, 0);							// background color 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the screen
-	triangle.Draw();
+	//triangle.Draw();
+	fc.Draw();
+	fc2.Draw();
 	glutSwapBuffers();									// exchange the two buffers
 }
 
