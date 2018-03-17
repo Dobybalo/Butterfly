@@ -206,19 +206,19 @@ Camera camera;
 // handle of the shader program
 unsigned int shaderProgram;
 
-class Triangle {
+class TriangleFan {
 	unsigned int vao;	// vertex array object id
 	float phi;			// rotation
 	float sx, sy;		// scaling
 	float wTx, wTy;		// translation
 	
 public:
-	Triangle() {
+	TriangleFan() {
 		Animate(0);
 	}
 
 	void Create() {
-
+		/*
 		//itt felvesszük a vertexCoords-ot
 		//  ha 20 részre osztom fel a kört, 22 pont lesz (körvonal elsõ pontja 2x kell), mindegyikhez tartozik 2 koord. -> 44
 		const int num_cps = 100;
@@ -229,8 +229,8 @@ public:
 		
 		for (int i = 0; i < num_cps; i++)
 		{
-			/*angle = i * 360 / num_cps;
-			float rad = angle * PI / 180;*/
+			//angle = i * 360 / num_cps;
+			//float rad = angle * PI / 180;
 			float rad = (float)i / (float)num_cps * 2.0f * M_PI;
 			float x = cosf(rad) * 3;
 			float y = sinf(rad) * 3;
@@ -242,6 +242,37 @@ public:
 		//utsó elõtti két koordináta(is) a körvonal elsõ pontja
 		vertexCoords[size - 2] = vertexCoords[2];
 		vertexCoords[size - 1] = vertexCoords[3];
+		
+		*/
+
+		// ugyanez Vectorral:
+		const int num_cps = 100;
+		const int array_size = (num_cps + 2) * 2;
+		std::vector<float> v;
+		v.push_back(0);	// cX
+		v.push_back(0);  // cY
+
+		for (int i = 0; i < num_cps; i++)
+		{
+			float rad = (float)i / (float)num_cps * 2.0f * M_PI;
+			float x = cosf(rad) * 3;
+			float y = sinf(rad) * 3;
+
+			v.push_back(x);
+			v.push_back(y);
+		}
+
+		//körvonal elsõ pontja kell még egyszer...
+		v.push_back(v.at(2));
+		v.push_back(v.at(3));
+
+		//alakítsuk át tömbbé:
+		float vertexCoords[array_size];
+
+		for (int i = 0; i < array_size; i++) {
+			vertexCoords[i] = v.at(i);
+		}
+
 		// ---------------
 
 		glGenVertexArrays(1, &vao);	// create 1 vertex array object
@@ -324,22 +355,22 @@ public:
 
 class Butterfly {
 	//consists of body, head and wings
-	// body: ellipse - scaling a circle
-	// head: circle
+	// body: ellipse - scaling a circle - triangle_fan
+	// head: circle - triangle_fan
 	// wings: textured something...
 };
 
 class Flower {
 	//consists of petals and "centre"
-	// centre: circle
-	// petals: ?
+	// centre: circle - a triangle_fan
+	// petals: ? - triangle_fan?
 	// ötlet a kirajzoláshoz: elõször kirajzoljuk az egész csillagot, amit a szirmok alkotnak, majd FÖLÉ rajzoljuk a centert
 
 };
 
 
 // The virtual world
-Triangle triangle;
+TriangleFan triangle;
 
 // Initialization, create an OpenGL context
 void onInitialization() {
