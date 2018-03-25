@@ -206,6 +206,8 @@ Camera camera;
 // handle of the shader program
 unsigned int shaderProgram;
 
+
+
 class TriangleFan {
 
 protected:
@@ -214,6 +216,10 @@ protected:
 	float sx, sy;		// scaling
 	float wTx, wTy;		// translation
 	std::vector<float> vertexCoords;
+	std::vector<float> vertexColors;
+	float Red = 0.0f;
+	float Green = 0.0f;
+	float Blue = 1.0f;
 
 	virtual void setVertexCoords() {
 		
@@ -221,8 +227,8 @@ protected:
 		//const int array_size = (num_cps + 2) * 2;
 
 		//std::vector<float> vertexCoords;
-		vertexCoords.push_back(0);	// cX
-		vertexCoords.push_back(0);  // cY
+		vertexCoords.push_back(0.0f);	// cX
+		vertexCoords.push_back(0.0f);  // cY
 
 		for (int i = 0; i < num_cps; i++)
 		{
@@ -240,6 +246,16 @@ protected:
 
 		//return vertexCoords;
 	}
+
+	void setVertexColors() {
+		//a vertexCoords összes eleméhez felveszünk 3 számot (RGB)
+		for (int i = 0; i < vertexCoords.size(); i++) {
+			vertexColors.push_back(Red);
+			vertexColors.push_back(Green);
+			vertexColors.push_back(Blue);
+		}
+
+	}
 	
 public:
 	TriangleFan() {
@@ -251,7 +267,8 @@ public:
 		setVertexCoords();
 			//std::vector<float> vertexCoords = getVertexCoords();
 		
-
+		setVertexColors();
+		
 		glGenVertexArrays(1, &vao);	// create 1 vertex array object
 		glBindVertexArray(vao);		// make it active
 
@@ -276,8 +293,8 @@ public:
 
 						  // vertex colors: vbo[1] -> Attrib Array 1 -> vertexColor of the vertex shader
 		glBindBuffer(GL_ARRAY_BUFFER, vbo[1]); // make it active, it is an array
-		float vertexColors[] = { 0, 0, 1,   0, 0, 1,   0, 0, 1 };	// vertex data on the CPU
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertexColors), vertexColors, GL_STATIC_DRAW);	// copy to the GPU
+		//float vertexColors[] = { 0, 0, 1,   0, 0, 1,   0, 0, 1 };	// vertex data on the CPU
+		glBufferData(GL_ARRAY_BUFFER, vertexColors.size() * sizeof(float), &vertexColors[0], GL_STATIC_DRAW);	// copy to the GPU
 
 																							// Map Attribute Array 1 to the current bound vertex buffer (vbo[1])
 		glEnableVertexAttribArray(1);  // Vertex position
@@ -330,12 +347,12 @@ public:
 	}
 };
 
-class FlowerCenter : public TriangleFan{
-	// ami paraméterezhetõ kell legyen, az az eltolás és a sugárméret
-private:
-	float radius;
+class Circle : public TriangleFan{
+	// ami paraméterezhetõ kell legyen, az az eltolás, sugárméret
 
 protected:
+	float radius;
+
 	void setVertexCoords() {
 		const int num_cps = 100;
 		//const int array_size = (num_cps + 2) * 2;
@@ -361,13 +378,23 @@ protected:
 	}
 
 public:
-	FlowerCenter(float x, float y, float r) {
+	Circle(float x, float y, float r) {
 		wTx = x;
 		wTy = y;
 		radius = r;
 	}
 
 
+};
+
+class MyEllipse : public Circle {
+	// sajátossága, hogy az X-scaling állítható
+
+public:
+	MyEllipse(float x, float y, float r, float sX) :Circle(x, y, r) {
+		sx = sX;
+		//Red = 1.0f;
+	}
 };
 
 class Butterfly {
@@ -388,8 +415,10 @@ class Flower {
 
 // The virtual world
 TriangleFan triangle;
-FlowerCenter fc(0, 0, 0.5);
-FlowerCenter fc2(4, 5, 0.5);
+Circle fc(0, 0, 0.5);
+Circle fc2(4, 5, 0.5);
+MyEllipse ell(0, 0, 2, 0.2);
+Circle head(0, 2.5, 0.5);
 
 // Initialization, create an OpenGL context
 void onInitialization() {
@@ -399,6 +428,8 @@ void onInitialization() {
 	triangle.Create();
 	fc.Create();
 	fc2.Create();
+	ell.Create();
+	head.Create();
 
 	// Create vertex shader from string
 	unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -440,8 +471,10 @@ void onDisplay() {
 	glClearColor(0, 1, 0, 0);							// background color 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the screen
 	//triangle.Draw();
-	fc.Draw();
-	fc2.Draw();
+	//fc.Draw();
+	//fc2.Draw();
+	ell.Draw();
+	head.Draw();
 	glutSwapBuffers();									// exchange the two buffers
 }
 
