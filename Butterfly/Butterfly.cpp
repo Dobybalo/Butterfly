@@ -153,6 +153,16 @@ struct vec4 {
 			x * mat.m[0][2] + y * mat.m[1][2] + z * mat.m[2][2] + w * mat.m[3][2],
 			x * mat.m[0][3] + y * mat.m[1][3] + z * mat.m[2][3] + w * mat.m[3][3]);
 	}
+
+	vec4 operator*(float f) {
+		vec4 result(x * f, y * f);
+		return result;
+	}
+
+	vec4 operator+(const vec4& other_vector) {
+		vec4 result(x + other_vector.x, y + other_vector.y);
+		return result;
+	}
 };
 
 // 2D camera
@@ -206,7 +216,120 @@ Camera camera;
 // handle of the shader program
 unsigned int shaderProgram;
 
+class LineStrip {
 
+protected:
+	GLuint vao, vbo;        // vertex array object, vertex buffer object
+	float  vertexData[10000]; // interleaved data of coordinates and colors
+	int    nVertices;       // number of vertices
+public:
+
+	LineStrip() {
+		nVertices = 0;
+	}
+	void Create() {
+		glGenVertexArrays(1, &vao);
+		glBindVertexArray(vao);
+
+		glGenBuffers(1, &vbo); // Generate 1 vertex buffer object
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		// Enable the vertex attribute arrays
+		glEnableVertexAttribArray(0);  // attribute array 0
+		glEnableVertexAttribArray(1);  // attribute array 1
+									   // Map attribute array 0 to the vertex data of the interleaved vbo
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void*>(0)); // attribute array, components/attribute, component type, normalize?, stride, offset
+																										// Map attribute array 1 to the color data of the interleaved vbo
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void*>(2 * sizeof(float)));
+	}
+
+	void AddPoint(float cX, float cY) {
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		if (nVertices >= 2000) return;
+
+		vec4 wVertex = vec4(cX, cY, 0, 1) * camera.Pinv() * camera.Vinv();
+		// fill interleaved data
+		vertexData[5 * nVertices] = wVertex.x;
+		vertexData[5 * nVertices + 1] = wVertex.y;
+		vertexData[5 * nVertices + 2] = 1; // red
+		vertexData[5 * nVertices + 3] = 1; // green
+		vertexData[5 * nVertices + 4] = 1; // blue
+		nVertices++;
+		// copy data to the GPU
+		glBufferData(GL_ARRAY_BUFFER, nVertices * 5 * sizeof(float), vertexData, GL_DYNAMIC_DRAW);
+	}
+
+	void Draw() {
+		if (nVertices > 0) {
+			mat4 VPTransform = camera.V() * camera.P();
+
+			int location = glGetUniformLocation(shaderProgram, "MVP");
+			if (location >= 0) glUniformMatrix4fv(location, 1, GL_TRUE, VPTransform);
+			else printf("uniform MVP cannot be set\n");
+
+			glBindVertexArray(vao);
+			glDrawArrays(GL_LINE_STRIP, 0, nVertices);
+		}
+	}
+};
+
+class LagrangeCurve : public LineStrip {
+	std::vector<vec4> cps;
+	std::vector<float> ts;
+	std::vector<vec4> points;
+
+	float firstClickTime;
+
+	float L(int i, float t) {
+		float Li = 1.0f;
+		for (unsigned int j = 0; j < cps.size(); j++) {
+			if (j != i) {
+				Li *= ((t - ts[j]) / (ts[i] - ts[j]));
+			}
+		}
+		return Li;
+	}
+public:
+
+	std::vector<float> getTs() const { return ts; }
+
+	std::vector<vec4> getCps() const { return cps; }
+
+	std::vector<vec4> getPoints() const { return points; }
+
+	LagrangeCurve() { nVertices = 0; }
+
+	void AddControlPoint(vec4 cp, float t) {
+		
+		cps.push_back(cp);
+		//ts.push_back(time_elapsed);
+		ts.push_back(ts.size());
+
+		nVertices = 0;
+		points.clear();
+
+		for (unsigned int i = 0; i < cps.size() - 1; ++i) {
+
+			float dt = (ts[i + 1] - ts[i]) / 100.0f;
+			for (float t = ts[i]; t < ts[i + 1]; t += dt) {
+
+				vec4 currentPoint = r(t);
+
+				AddPoint(currentPoint.x, currentPoint.y);
+				points.push_back(currentPoint);
+
+			}
+		}
+
+	}
+
+	vec4 r(float t) {
+		vec4 rr(0, 0, 0, 1);
+		for (unsigned int i = 0; i < cps.size(); i++)
+			rr = rr + (cps[i] * L(i, t));
+		return rr;
+	}
+
+};
 
 class TriangleFan {
 
@@ -419,6 +542,7 @@ Circle fc(0, 0, 0.5);
 Circle fc2(4, 5, 0.5);
 MyEllipse ell(0, 0, 2, 0.2);
 Circle head(0, 2.5, 0.5);
+LagrangeCurve lagrange;
 
 // Initialization, create an OpenGL context
 void onInitialization() {
@@ -430,6 +554,7 @@ void onInitialization() {
 	fc2.Create();
 	ell.Create();
 	head.Create();
+	lagrange.Create();
 
 	// Create vertex shader from string
 	unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -475,6 +600,7 @@ void onDisplay() {
 	//fc2.Draw();
 	ell.Draw();
 	head.Draw();
+	lagrange.Draw();
 	glutSwapBuffers();									// exchange the two buffers
 }
 
@@ -492,6 +618,7 @@ void onMouse(int button, int state, int pX, int pY) {
 	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {  // GLUT_LEFT_BUTTON / GLUT_RIGHT_BUTTON and GLUT_DOWN / GLUT_UP
 		float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
 		float cY = 1.0f - 2.0f * pY / windowHeight;
+		lagrange.AddControlPoint(vec4(cX, cY), glutGet(GLUT_ELAPSED_TIME) / 1000.0f);
 		glutPostRedisplay();     // redraw
 	}
 }
