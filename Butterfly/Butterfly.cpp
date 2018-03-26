@@ -600,6 +600,8 @@ public:
 
 };
 
+//Petal petal, petal2, petal3;
+
 
 class Flower {
 	//consists of petals and "centre"
@@ -607,12 +609,14 @@ class Flower {
 	// petals: ? - triangle_fan?
 	// ötlet a kirajzoláshoz: elõször kirajzoljuk az egész csillagot, amit a szirmok alkotnak, majd FÖLÉ rajzoljuk a centert
 
-	std::vector<Petal> petals;
-	int num_petals;
+	//std::vector<Petal*> petals;
+	const int max_num_petals = 13; // maximum érték
+	int num_petals;	//amennyit a maximumból "felhasználunk"
 	std::vector<vec4> pontok;
 
 public:
 
+	// paraméter: hány szirom legyen
 	Flower(int n) {
 		printf("Flower - constructor ran\n");
 		num_petals = n;
@@ -621,21 +625,19 @@ public:
 private:
 	void buildPoints(int n) {
 
-		const int csucsok_szama = n; //10;		// ötágú lesz a csillag
+		const int csucsok_szama = 2 * num_petals; //10 - ötágú lesz a csillag
 		float small_radius = 0.1;
 		float big_radius = 0.3;
-
-		pontok.push_back(vec4(0, small_radius));
 
 		for (int i = 0; i < csucsok_szama; i++)
 		{
 			float rad = (float)i / (float)csucsok_szama * 2.0f * M_PI;
-			float radius = i % 2 == 0 ? small_radius : big_radius;
+			float radius = i % 2 == 0 ? big_radius : small_radius;
 			float x = cosf(rad) * radius;
 			float y = sinf(rad) * radius;
 
 			pontok.push_back(vec4(x, y));
-
+			printf("Point added, i=%d, X: %f, Y: %f\n", i, x, y);
 		}
 	}
 
@@ -644,12 +646,13 @@ public:
 
 		//létrehozunk n db megfelelõ paraméterekkel rendelkezõ szirmot
 
-		buildPoints(6); // pontokat felvesszük - EGYELÕRE 6!!!!
+		buildPoints(2 * num_petals); // pontokat felvesszük - EGYELÕRE 6!!!!
 		
 		//ciklikusan felépítjük a szirmokat, páros n-t feltételezünk...
 		// (1,2,3), (3,4,5), (5,6,7), ... , (9,0,1)
 		// ha mondjuk 6 pont van -> 3 szirom, (1,2,3), (3,4,5), (5,0,1)
 
+		
 		Petal p1, p2, p3;
 		p1.AddControlPoint(pontok.at(1));
 		p1.AddControlPoint(pontok.at(2));
@@ -663,10 +666,24 @@ public:
 		p3.AddControlPoint(pontok.at(0));
 		p3.AddControlPoint(pontok.at(1));
 		
-		petals.push_back(p1);
-		petals.push_back(p2);
-		petals.push_back(p3);
+		petals.push_back(&p1);
+		petals.push_back(&p2);
+		petals.push_back(&p3);
+		
+		/*
+		petal.AddControlPoint(pontok.at(1));
+		petal.AddControlPoint(pontok.at(2));
+		petal.AddControlPoint(pontok.at(3));
 
+		petal2.AddControlPoint(pontok.at(3));
+		petal2.AddControlPoint(pontok.at(4));
+		petal2.AddControlPoint(pontok.at(5));
+		
+		
+		petal3.AddControlPoint(pontok.at(5));
+		petal3.AddControlPoint(pontok.at(0));
+		petal3.AddControlPoint(pontok.at(1));
+		*/
 	}
 
 	void Create() {
@@ -677,8 +694,10 @@ public:
 
 		//szirmok
 		for (int i = 0; i < petals.size(); i++) {
-			Petal p = petals.at(i);
-			p.Create();
+			Petal *pointer = petals.at(i);
+			//Petal p = petals.at(i);
+			//p.Create();
+			pointer->Create();
 		}
 
 		//center
@@ -687,8 +706,10 @@ public:
 
 	void Draw() {
 		for (int i = 0; i < petals.size(); i++) {
-			Petal p = petals.at(i);
-			p.Draw();
+			Petal *p = petals.at(i);
+			p->Draw();
+			//Petal p = petals.at(i);
+			//p.Draw();
 		}
 	}
 
@@ -714,6 +735,11 @@ void onInitialization() {
 	fc2.Create();
 	ell.Create();
 	head.Create();
+
+	//TESZT
+	petal.Create();
+	petal2.Create();
+	petal3.Create();
 
 	flower.Create();
 	// ITT legyen a szirmok lószara
@@ -775,6 +801,10 @@ void onDisplay() {
 	//head.Draw();
 
 	flower.Draw();
+
+	petal.Draw(); 
+	petal2.Draw(); 
+	petal3.Draw();
 
 	//lagrange.Draw();
 	
