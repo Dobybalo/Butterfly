@@ -288,6 +288,7 @@ class LagrangeCurve : public LineStrip {
 		}
 		return Li;
 	}
+
 public:
 
 	std::vector<float> getTs() const { return ts; }
@@ -296,12 +297,15 @@ public:
 
 	std::vector<vec4> getPoints() const { return points; }
 
-	LagrangeCurve() { nVertices = 0; }
+	LagrangeCurve() { 
+		printf("constructor ran\n");
+		nVertices = 0; }
 
-	void AddControlPoint(vec4 cp, float t) {
+	void AddControlPoint(vec4 cp) {
+
+		printf("cp added\n");
 		
 		cps.push_back(cp);
-		//ts.push_back(time_elapsed);
 		ts.push_back(ts.size());
 
 		nVertices = 0;
@@ -328,7 +332,56 @@ public:
 			rr = rr + (cps[i] * L(i, t));
 		return rr;
 	}
+	/*
+	void startingPoints() {
 
+		std::vector<vec4> pontok;
+		const int csucsok_szama = 10;		// ötágú lesz a csillag
+		float small_radius = 0.1;
+		float big_radius = 0.3;
+		
+		pontok.push_back(vec4(0, small_radius));
+		
+		pontok.push_back(0);	// cX
+		pontok.push_back(small_radius);  // cY
+		
+		for (int i = 0; i < csucsok_szama; i++)
+		{
+			float rad = (float)i / (float)csucsok_szama * 2.0f * M_PI;
+			float radius = i % 2 == 0 ? small_radius : big_radius;
+			float x = cosf(rad) * radius;
+			float y = sinf(rad) * radius;
+
+			//TESTING
+			printf("radius: %f\n", radius);
+
+			pontok.push_back(vec4(x, y));
+			/*
+			pontok.push_back(x);
+			pontok.push_back(y);
+			
+		}
+
+		//megvan a "pontok" vektor
+
+		//körvonal elsõ pontja kell még egyszer...??
+		//pontok.push_back(pontok.at(0));
+		
+		
+		pontok.push_back(pontok.at(2));
+		pontok.push_back(pontok.at(3));
+		
+
+		AddControlPoint(pontok.at(1));
+		AddControlPoint(pontok.at(2));
+		AddControlPoint(pontok.at(3));
+		
+		//AddControlPoint(vec4(pontok.at(0), pontok.at(1)));
+		AddControlPoint(vec4(pontok.at(2), pontok.at(3)));
+		AddControlPoint(vec4(pontok.at(4), pontok.at(5)));
+		AddControlPoint(vec4(pontok.at(6), pontok.at(7)));
+		
+	} */
 };
 
 class TriangleFan {
@@ -470,7 +523,7 @@ public:
 	}
 };
 
-class Circle : public TriangleFan{
+class Circle : public TriangleFan {
 	// ami paraméterezhetõ kell legyen, az az eltolás, sugárméret
 
 protected:
@@ -527,11 +580,117 @@ class Butterfly {
 	// wings: textured something...
 };
 
+class Petal {
+
+	//ezek 1-1, 3 kontrollponttal megadott lagrange(?) görbét tartalmaznak - egyelõre
+	LagrangeCurve lagrange;
+
+public:
+	void Create() {
+		lagrange.Create();
+	}
+
+	void Draw() {
+		lagrange.Draw();
+	}
+
+	void AddControlPoint(vec4 v) {
+		lagrange.AddControlPoint(v);
+	}
+
+};
+
+
 class Flower {
 	//consists of petals and "centre"
 	// centre: circle - a triangle_fan
 	// petals: ? - triangle_fan?
 	// ötlet a kirajzoláshoz: elõször kirajzoljuk az egész csillagot, amit a szirmok alkotnak, majd FÖLÉ rajzoljuk a centert
+
+	std::vector<Petal> petals;
+	int num_petals;
+	std::vector<vec4> pontok;
+
+public:
+
+	Flower(int n) {
+		printf("Flower - constructor ran\n");
+		num_petals = n;
+	}
+
+private:
+	void buildPoints(int n) {
+
+		const int csucsok_szama = n; //10;		// ötágú lesz a csillag
+		float small_radius = 0.1;
+		float big_radius = 0.3;
+
+		pontok.push_back(vec4(0, small_radius));
+
+		for (int i = 0; i < csucsok_szama; i++)
+		{
+			float rad = (float)i / (float)csucsok_szama * 2.0f * M_PI;
+			float radius = i % 2 == 0 ? small_radius : big_radius;
+			float x = cosf(rad) * radius;
+			float y = sinf(rad) * radius;
+
+			pontok.push_back(vec4(x, y));
+
+		}
+	}
+
+public:
+	void buildPetals() {
+
+		//létrehozunk n db megfelelõ paraméterekkel rendelkezõ szirmot
+
+		buildPoints(6); // pontokat felvesszük - EGYELÕRE 6!!!!
+		
+		//ciklikusan felépítjük a szirmokat, páros n-t feltételezünk...
+		// (1,2,3), (3,4,5), (5,6,7), ... , (9,0,1)
+		// ha mondjuk 6 pont van -> 3 szirom, (1,2,3), (3,4,5), (5,0,1)
+
+		Petal p1, p2, p3;
+		p1.AddControlPoint(pontok.at(1));
+		p1.AddControlPoint(pontok.at(2));
+		p1.AddControlPoint(pontok.at(3));
+		
+		p2.AddControlPoint(pontok.at(3));
+		p2.AddControlPoint(pontok.at(4));
+		p2.AddControlPoint(pontok.at(5));
+		
+		p3.AddControlPoint(pontok.at(5));
+		p3.AddControlPoint(pontok.at(0));
+		p3.AddControlPoint(pontok.at(1));
+		
+		petals.push_back(p1);
+		petals.push_back(p2);
+		petals.push_back(p3);
+
+	}
+
+	void Create() {
+
+		printf("Flower created\n");
+		//TESZT
+		//buildPetals();
+
+		//szirmok
+		for (int i = 0; i < petals.size(); i++) {
+			Petal p = petals.at(i);
+			p.Create();
+		}
+
+		//center
+		// TODO
+	}
+
+	void Draw() {
+		for (int i = 0; i < petals.size(); i++) {
+			Petal p = petals.at(i);
+			p.Draw();
+		}
+	}
 
 };
 
@@ -542,7 +701,8 @@ Circle fc(0, 0, 0.5);
 Circle fc2(4, 5, 0.5);
 MyEllipse ell(0, 0, 2, 0.2);
 Circle head(0, 2.5, 0.5);
-LagrangeCurve lagrange;
+//LagrangeCurve lagrange;
+Flower flower(6);
 
 // Initialization, create an OpenGL context
 void onInitialization() {
@@ -554,7 +714,20 @@ void onInitialization() {
 	fc2.Create();
 	ell.Create();
 	head.Create();
-	lagrange.Create();
+
+	flower.Create();
+	// ITT legyen a szirmok lószara
+	flower.buildPetals();
+
+	//lagrange.Create();
+
+	//lagrange.startingPoints();
+	
+	/*
+	lagrange.AddControlPoint(vec4(-0.05, -0.1));
+	lagrange.AddControlPoint(vec4(0, 0));
+	lagrange.AddControlPoint(vec4(0.05, -0.1));
+	*/
 
 	// Create vertex shader from string
 	unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -598,9 +771,13 @@ void onDisplay() {
 	//triangle.Draw();
 	//fc.Draw();
 	//fc2.Draw();
-	ell.Draw();
-	head.Draw();
-	lagrange.Draw();
+	//ell.Draw();
+	//head.Draw();
+
+	flower.Draw();
+
+	//lagrange.Draw();
+	
 	glutSwapBuffers();									// exchange the two buffers
 }
 
@@ -618,7 +795,7 @@ void onMouse(int button, int state, int pX, int pY) {
 	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {  // GLUT_LEFT_BUTTON / GLUT_RIGHT_BUTTON and GLUT_DOWN / GLUT_UP
 		float cX = 2.0f * pX / windowWidth - 1;	// flip y axis
 		float cY = 1.0f - 2.0f * pY / windowHeight;
-		lagrange.AddControlPoint(vec4(cX, cY), glutGet(GLUT_ELAPSED_TIME) / 1000.0f);
+		//lagrange.AddControlPoint(vec4(cX, cY));
 		glutPostRedisplay();     // redraw
 	}
 }
