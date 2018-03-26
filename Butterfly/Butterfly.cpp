@@ -260,6 +260,7 @@ public:
 
 	void Draw() {
 		if (nVertices > 0) {
+
 			mat4 VPTransform = camera.V() * camera.P();
 
 			int location = glGetUniformLocation(shaderProgram, "MVP");
@@ -332,56 +333,7 @@ public:
 			rr = rr + (cps[i] * L(i, t));
 		return rr;
 	}
-	/*
-	void startingPoints() {
-
-		std::vector<vec4> pontok;
-		const int csucsok_szama = 10;		// ötágú lesz a csillag
-		float small_radius = 0.1;
-		float big_radius = 0.3;
-		
-		pontok.push_back(vec4(0, small_radius));
-		
-		pontok.push_back(0);	// cX
-		pontok.push_back(small_radius);  // cY
-		
-		for (int i = 0; i < csucsok_szama; i++)
-		{
-			float rad = (float)i / (float)csucsok_szama * 2.0f * M_PI;
-			float radius = i % 2 == 0 ? small_radius : big_radius;
-			float x = cosf(rad) * radius;
-			float y = sinf(rad) * radius;
-
-			//TESTING
-			printf("radius: %f\n", radius);
-
-			pontok.push_back(vec4(x, y));
-			/*
-			pontok.push_back(x);
-			pontok.push_back(y);
-			
-		}
-
-		//megvan a "pontok" vektor
-
-		//körvonal elsõ pontja kell még egyszer...??
-		//pontok.push_back(pontok.at(0));
-		
-		
-		pontok.push_back(pontok.at(2));
-		pontok.push_back(pontok.at(3));
-		
-
-		AddControlPoint(pontok.at(1));
-		AddControlPoint(pontok.at(2));
-		AddControlPoint(pontok.at(3));
-		
-		//AddControlPoint(vec4(pontok.at(0), pontok.at(1)));
-		AddControlPoint(vec4(pontok.at(2), pontok.at(3)));
-		AddControlPoint(vec4(pontok.at(4), pontok.at(5)));
-		AddControlPoint(vec4(pontok.at(6), pontok.at(7)));
-		
-	} */
+	
 };
 
 class TriangleFan {
@@ -554,10 +506,18 @@ protected:
 	}
 
 public:
+	Circle() {}
+
 	Circle(float x, float y, float r) {
 		wTx = x;
 		wTy = y;
 		radius = r;
+	}
+
+	Circle(const Circle& c) {
+		wTx = c.wTx;
+		wTy = c.wTy;
+		radius = c.radius;
 	}
 
 
@@ -600,10 +560,6 @@ public:
 
 };
 
-//Petal petal, petal2, petal3;
-//TERV: manuális módszer, felveszünk (3+5+8+13) = 29 darab Petal-t........
-
-
 class Flower {
 	//consists of petals and "centre"
 	// centre: circle - a triangle_fan
@@ -611,18 +567,27 @@ class Flower {
 	// ötlet a kirajzoláshoz: elõször kirajzoljuk az egész csillagot, amit a szirmok alkotnak, majd FÖLÉ rajzoljuk a centert
 	
 	std::vector<Petal*> petals;
+	Circle center;
 	static const int max_num_petals = 13; // maximum érték
 	int num_petals;	//amennyit a maximumból "felhasználunk"
 	std::vector<vec4> pontok;
 	Petal petals_array[max_num_petals];
+	vec4 c;	//  középpont
+	float smallR; // kis sugár
+	float bigR;		// nagy sugár
 
 public:
 
 	// paraméter: hány szirom legyen
-	Flower(int n) {
+	Flower(int n, vec4 v, float smallRad, float bigRad) {
 		
 		num_petals = n;
+		c = v;
+		smallR = smallRad;
+		bigR = bigRad;
 
+		//center
+		center = Circle(10*v.x, 10*v.y, 10*smallRad);	//vmiért kell a 10... más méreteket használ a triangle_fan és az egyéb...
 		
 		//array //- csak hogy állandó memóriacímen legyenek, nem "dangling"
 		for (int i = 0; i < n; i++)
@@ -631,8 +596,6 @@ public:
 			petals_array[i] = pe;
 		}
 		
-
-		
 		//vector
 		for (int i = 0; i < n; i++) {
 			//Petal pe;						// trying to access a dangling pointer!!!!
@@ -640,38 +603,23 @@ public:
 			petals.push_back(&(petals_array[i]));
 		}
 		
-
-		/*
-		petals.push_back(&petal);
-		petals.push_back(&petal2);
-		petals.push_back(&petal3);
-		*/
-
-		/*
-		//default "value"-k a petals tömbnek
-		for (int i = 0; i < max_num_petals; i++) {
-			Petal p1;
-			petals[i] = p1;	//kell?
-		}
-		*/
 	}
 
 private:
 	void buildPoints(int n) {
 
 		const int csucsok_szama = 2 * num_petals; //10 - ötágú lesz a csillag
-		float small_radius = 0.1;
-		float big_radius = 0.3;
+		float small_radius = smallR;	// 0.1;
+		float big_radius = bigR;	// 0.3;
 
 		for (int i = 0; i < csucsok_szama; i++)
 		{
 			float rad = (float)i / (float)csucsok_szama * 2.0f * M_PI;
 			float radius = i % 2 == 0 ? big_radius : small_radius;
-			float x = cosf(rad) * radius;
-			float y = sinf(rad) * radius;
+			float x = cosf(rad) * radius + c.x;
+			float y = sinf(rad) * radius + c.y;
 
 			pontok.push_back(vec4(x, y));
-			//printf("Point added, i=%d, X: %f, Y: %f\n", i, x, y);
 		}
 	}
 
@@ -680,7 +628,7 @@ public:
 
 		//létrehozunk n db megfelelõ paraméterekkel rendelkezõ szirmot
 
-		buildPoints(2 * num_petals); // pontokat felvesszük - EGYELÕRE 6!!!!
+		buildPoints(2 * num_petals); // pontokat felvesszük
 
 		//ciklikusan felépítjük a szirmokat...
 		// (1,2,3), (3,4,5), (5,6,7), ... , (9,0,1)
@@ -707,73 +655,10 @@ public:
 
 		}
 		
-
-		//paraméteresen ^
-
-		/*
-		petals.at(0)->AddControlPoint(pontok.at(1));
-		petals.at(0)->AddControlPoint(pontok.at(2));
-		petals.at(0)->AddControlPoint(pontok.at(3));
-		
-		petals.at(1)->AddControlPoint(pontok.at(3));
-		petals.at(1)->AddControlPoint(pontok.at(4));
-		petals.at(1)->AddControlPoint(pontok.at(5));
-
-		petals.at(2)->AddControlPoint(pontok.at(5));
-		petals.at(2)->AddControlPoint(pontok.at(0));
-		petals.at(2)->AddControlPoint(pontok.at(1));
-		*/
-
-		/*
-		Petal p1, p2, p3;
-		p1.AddControlPoint(pontok.at(1));
-		p1.AddControlPoint(pontok.at(2));
-		p1.AddControlPoint(pontok.at(3));
-		
-		p2.AddControlPoint(pontok.at(3));
-		p2.AddControlPoint(pontok.at(4));
-		p2.AddControlPoint(pontok.at(5));
-		
-		p3.AddControlPoint(pontok.at(5));
-		p3.AddControlPoint(pontok.at(0));
-		p3.AddControlPoint(pontok.at(1));
-		
-		petals.push_back(&p1);
-		petals.push_back(&p2);
-		petals.push_back(&p3);
-		*/
-		/*
-		petal.AddControlPoint(pontok.at(1));
-		petal.AddControlPoint(pontok.at(2));
-		petal.AddControlPoint(pontok.at(3));
-
-		petal2.AddControlPoint(pontok.at(3));
-		petal2.AddControlPoint(pontok.at(4));
-		petal2.AddControlPoint(pontok.at(5));
-		
-		
-		petal3.AddControlPoint(pontok.at(5));
-		petal3.AddControlPoint(pontok.at(0));
-		petal3.AddControlPoint(pontok.at(1));
-		*/
 	}
 
 	void Create() {
 
-		//printf("Flower created, petals.size = %d\n", petals.size());
-		// mindig 0 -> adjunk hozzá defaultokat, és utána módosítsuk azokat! (addControlPoint)
-
-		//TESZT
-		//buildPetals();
-
-		/*
-		for (int i = 0; i < num_petals; i++)
-		{
-			petals_array[i]->Create();
-		}
-		*/
-
-		
 		//szirmok
 		for (int i = 0; i < petals.size(); i++) {
 			Petal *pointer = petals.at(i);
@@ -784,23 +669,17 @@ public:
 		
 
 		//center
-		// TODO
+		center.Create();
 	}
 
 	void Draw() {
-		/*
-		for (int i = 0; i < num_petals; i++)
-		{
-			petals_array[i]->Draw();
-		}
-		*/
 		
 		for (int i = 0; i < petals.size(); i++) {
 			Petal *p = petals.at(i);
 			p->Draw();
-			//Petal p = petals.at(i);
-			//p.Draw();
 		}
+
+		center.Draw();
 		
 	}
 
@@ -814,10 +693,10 @@ Circle fc2(4, 5, 0.5);
 MyEllipse ell(0, 0, 2, 0.2);
 Circle head(0, 2.5, 0.5);
 //LagrangeCurve lagrange;
-Flower flower(13);
-Flower flower2(8);
-Flower flower3(5);
-Flower flower4(3);
+Flower flower(13, vec4(0.2, 0.2), 0.1, 0.15);
+Flower flower2(8, vec4(-0.5,-0.2), 0.08, 0.13);
+Flower flower3(5, vec4(0.7, -0.45), 0.1, 0.2);
+Flower flower4(3, vec4(-0.5, 0.5), 0.08, 0.25);
 
 
 // Initialization, create an OpenGL context
@@ -830,13 +709,6 @@ void onInitialization() {
 	fc2.Create();
 	ell.Create();
 	head.Create();
-
-	/*
-	//TESZT
-	petal.Create();
-	petal2.Create();
-	petal3.Create();
-	*/
 
 	flower.Create();
 	flower.buildPetals();
