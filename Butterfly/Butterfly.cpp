@@ -540,24 +540,55 @@ class Butterfly {
 	// wings: textured something...
 };
 
-class Petal {
+class Petal : TriangleFan {
 
 	//ezek 1-1, 3 kontrollponttal megadott lagrange(?) görbét tartalmaznak - egyelõre
 	LagrangeCurve lagrange;
+	vec4 center;
 
 public:
+	void setVertexCoords() {
+
+		// a Lagrange pontjai, plusz elsõnek a középpont
+		vertexCoords.push_back(center.x);
+		vertexCoords.push_back(center.y);
+
+		std::vector<vec4> lagrange_points = lagrange.getPoints();
+		for (int i = 0; i < lagrange_points.size(); i++) {
+			vec4 v = lagrange_points.at(i);
+			vertexCoords.push_back(v.x);
+			vertexCoords.push_back(v.y);
+		}
+
+	}
+
 	void Create() {
-		lagrange.Create();
+		lagrange.Create();		//problem: akkor kialakul a TriangleFan, mikor a Lagrange-nak még egy cp-je sincs!
+		//TriangleFan::Create();
 	}
 
 	void Draw() {
-		lagrange.Draw();
+		
+		//lagrange.Draw();
+		if (lagrange.getCps().size() == 3)
+			TriangleFan::Draw();
+		
 	}
 
 	void AddControlPoint(vec4 v) {
 		lagrange.AddControlPoint(v);
+		if (lagrange.getCps().size() == 3)
+			TriangleFan::Create();
 	}
 
+	Petal(vec4 cntr = vec4(0,0)) {
+		center = cntr;
+		sx = 10;
+		sy = 10;
+		Red = 1;
+		Green = 1;
+		Blue = 0.2;
+	}
 };
 
 class Flower {
@@ -579,20 +610,20 @@ class Flower {
 public:
 
 	// paraméter: hány szirom legyen
-	Flower(int n, vec4 v, float smallRad, float bigRad) {
+	Flower(int n, vec4 cntr, float smallRad, float bigRad) {
 		
 		num_petals = n;
-		c = v;
+		c = cntr;
 		smallR = smallRad;
 		bigR = bigRad;
 
 		//center
-		center = Circle(10*v.x, 10*v.y, 10*smallRad);	//vmiért kell a 10... más méreteket használ a triangle_fan és az egyéb...
+		center = Circle(10*cntr.x, 10*cntr.y, 10*smallRad);	//vmiért kell a 10... más méreteket használ a triangle_fan és az egyéb...
 		
 		//array //- csak hogy állandó memóriacímen legyenek, nem "dangling"
 		for (int i = 0; i < n; i++)
 		{
-			Petal pe;
+			Petal pe(cntr);
 			petals_array[i] = pe;
 		}
 		
@@ -782,11 +813,6 @@ void onDisplay() {
 	flower3.Draw();
 	flower4.Draw();
 
-	/*
-	petal.Draw(); 
-	petal2.Draw(); 
-	petal3.Draw();
-	*/
 
 	//lagrange.Draw();
 	
