@@ -430,7 +430,7 @@ public:
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, NULL); // Attribute Array 1, components/attribute, component type, normalize?, tightly packed
 	}
 
-	void Animate(float t) {
+	virtual void Animate(float t) {
 		sx = 1; // sinf(t);
 		sy = 1; // cosf(t);
 		wTx = 0; // 4 * cosf(t / 2);
@@ -542,12 +542,13 @@ class Butterfly {
 
 class Petal : TriangleFan {
 
+protected:
 	//ezek 1-1, 3 kontrollponttal megadott lagrange(?) görbét tartalmaznak - egyelõre
 	LagrangeCurve lagrange;
 	vec4 center;
 
 public:
-	void setVertexCoords() {
+	void setVertexCoords() {		// kell, hogy virtual legyen?
 
 		// a Lagrange pontjai, plusz elsõnek a középpont
 		vertexCoords.push_back(center.x);
@@ -589,6 +590,66 @@ public:
 		Green = 1;
 		Blue = 0.2;
 	}
+};
+
+class Wing : public TriangleFan {
+
+protected:
+	LagrangeCurve lagrange;
+	vec4 center;
+
+public:
+
+	Wing(vec4 cntr = vec4(0, 0)) {
+		center = cntr;
+		sx = 10;
+		sy = 10;
+		Red = 0;
+		Green = 0;
+		Blue = 0;
+	}
+
+	void setVertexCoords() {		// kell, hogy virtual legyen?
+
+									// a Lagrange pontjai, plusz elsõnek a középpont
+		vertexCoords.push_back(center.x);
+		vertexCoords.push_back(center.y);
+
+		std::vector<vec4> lagrange_points = lagrange.getPoints();
+		for (int i = 0; i < lagrange_points.size(); i++) {
+			vec4 v = lagrange_points.at(i);
+			vertexCoords.push_back(v.x);
+			vertexCoords.push_back(v.y);
+		}
+
+	}
+
+	void Create() {
+		lagrange.Create();		//problem: akkor kialakul a TriangleFan, mikor a Lagrange-nak még egy cp-je sincs!
+								//TriangleFan::Create();
+	}
+
+	void Draw() {
+
+		//lagrange.Draw();
+		
+		if (lagrange.getCps().size() == 5)
+			TriangleFan::Draw();
+		
+	}
+
+	void AddControlPoint(vec4 v) {
+		lagrange.AddControlPoint(v);
+		
+		if (lagrange.getCps().size() == 5)
+			TriangleFan::Create();
+		
+	}
+
+	void Animate(float t) {
+		sx = cosf(10*t) + 9;
+	}
+
 };
 
 class Flower {
@@ -721,13 +782,15 @@ public:
 TriangleFan triangle;
 Circle fc(0, 0, 0.5);
 Circle fc2(4, 5, 0.5);
-MyEllipse ell(0, 0, 2, 0.2);
+MyEllipse ell(0, 0, 2, 0.15);
 Circle head(0, 2.5, 0.5);
 //LagrangeCurve lagrange;
-Flower flower(13, vec4(0.2, 0.2), 0.1, 0.15);
+Flower flower(13, vec4(0.5, 0.5), 0.1, 0.15);
 Flower flower2(8, vec4(-0.5,-0.2), 0.08, 0.13);
 Flower flower3(5, vec4(0.7, -0.45), 0.1, 0.2);
 Flower flower4(3, vec4(-0.5, 0.5), 0.08, 0.25);
+Wing rightWing(vec4(0, 0));
+Wing leftWing(vec4(0, 0));
 
 
 // Initialization, create an OpenGL context
@@ -740,6 +803,21 @@ void onInitialization() {
 	fc2.Create();
 	ell.Create();
 	head.Create();
+	rightWing.Create();
+	leftWing.Create();
+
+	rightWing.AddControlPoint(vec4(0.018, 0.18));
+	rightWing.AddControlPoint(vec4(0.4, 0.4));
+	rightWing.AddControlPoint(vec4(0.38, 0.1));
+		//rightWing.AddControlPoint(vec4(0.3, -0.2));
+	rightWing.AddControlPoint(vec4(0.23, -0.25));
+	rightWing.AddControlPoint(vec4(0.01, -0.08));
+
+	leftWing.AddControlPoint(vec4(-0.018, 0.18));
+	leftWing.AddControlPoint(vec4(-0.4, 0.4));
+	leftWing.AddControlPoint(vec4(-0.38, 0.1));
+	leftWing.AddControlPoint(vec4(-0.23, -0.25));
+	leftWing.AddControlPoint(vec4(-0.01, -0.08));
 
 	flower.Create();
 	flower.buildPetals();
@@ -805,8 +883,10 @@ void onDisplay() {
 	//triangle.Draw();
 	//fc.Draw();
 	//fc2.Draw();
-	//ell.Draw();
-	//head.Draw();
+	head.Draw();
+	rightWing.Draw();
+	leftWing.Draw();
+	ell.Draw();
 
 	flower.Draw();
 	flower2.Draw();
@@ -847,6 +927,8 @@ void onIdle() {
 	long time = glutGet(GLUT_ELAPSED_TIME); // elapsed time since the start of the program
 	float sec = time / 1000.0f;				// convert msec to sec
 	triangle.Animate(sec);					// animate the triangle object
+	leftWing.Animate(sec);
+	rightWing.Animate(sec);
 	glutPostRedisplay();					// redraw the scene
 }
 
